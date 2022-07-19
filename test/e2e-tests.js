@@ -14,6 +14,8 @@ const { fetchEndpointAsText, fetchEndpointAsJson } = require('../server/lib/fetc
 const config = require('../server/lib/config');
 
 const {
+  ensureUserRegistered,
+  getTestClientForAs,
   getTestClientForHs,
   createTestRoom,
   joinRoom,
@@ -106,6 +108,20 @@ describe('matrix-public-archive', () => {
   });
 
   describe('Archive', () => {
+    before(async () => {
+      // Make sure the application service archiver user itself has a profile
+      // set otherwise we run into 404, `Profile was not found` errors when
+      // joining a remote federated room from the archiver user, see
+      // https://github.com/matrix-org/synapse/issues/4778
+      //
+      // FIXME: Remove after https://github.com/matrix-org/synapse/issues/4778 is resolved
+      const asClient = await getTestClientForAs();
+      await updateProfile({
+        client: asClient,
+        displayName: 'Archiver',
+      });
+    });
+
     // Use a fixed date at the start of the UTC day so that the tests are
     // consistent. Otherwise, the tests could fail when they start close to
     // midnight and it rolls over to the next day.
@@ -163,6 +179,7 @@ describe('matrix-public-archive', () => {
         `Coulomb's Law of Friction: Kinetic friction is independent of the sliding velocity.`,
       ];
 
+      // TODO: Can we use `createMessagesInRoom` here instead?
       const eventIds = [];
       for (const messageText of messageTextList) {
         const eventId = await sendMessageOnArchiveDate({
@@ -375,7 +392,39 @@ describe('matrix-public-archive', () => {
       );
     });
 
-    it(`can render day back in time from room on remote homeserver we haven't backfilled from`);
+    it.only(`can render day back in time from room on remote homeserver we haven't backfilled from`, async () => {
+      const hs2Client = await getTestClientForHs(testMatrixServerUrl2);
+
+      // Create a room on hs2
+      const hs2RoomId = await createTestRoom(hs2Client);
+      const room2EventIds = await createMessagesInRoom({
+        client: hs2Client,
+        roomId: hs2RoomId,
+        numMessages: 3,
+        prefix: HOMESERVER_URL_TO_PRETTY_NAME_MAP[hs2Client.homeserverUrl],
+        timestamp: archiveDate.getTime(),
+      });
+      console.log('archiveDate.getTime()', archiveDate.getTime());
+
+      archiveUrl = matrixPublicArchiveURLCreator.archiveUrlForDate(hs2RoomId, archiveDate, {
+        // Since hs1 doesn't know about this room on hs2 yet, we have to provide
+        // a via server to ask through.
+        viaServers: ['hs2'],
+      });
+
+      const archivePageHtml = await fetchEndpointAsText(archiveUrl);
+
+      const dom = parseHTML(archivePageHtml);
+
+      // Make sure the messages are visible
+      for (let i = 0; i < room2EventIds.length; i++) {
+        const eventId = room2EventIds[i];
+        assert.strictEqual(
+          dom.document.querySelectorAll(`[data-event-id="${eventId}"]`).length,
+          room2EventIds.length
+        );
+      }
+    });
 
     it(`will redirect to hour pagination when there are too many messages`);
 

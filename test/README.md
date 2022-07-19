@@ -27,6 +27,19 @@ $ npm run test-interactive
 
 ### Developer utility
 
+macOS:
+
+```sh
+$ docker ps --all | grep test_hs
+$ docker logs -f --tail 10 matrix_public_archive_test-hs1-1
+$ docker logs -f --tail 10 matrix_public_archive_test-hs2-1
+
+$ docker stop matrix_public_archive_test-hs1-1 matrix_public_archive_test-hs2-1
+$ docker rm matrix_public_archive_test-hs1-1 matrix_public_archive_test-hs2-1
+```
+
+Windows:
+
 ```sh
 $ docker ps --all | grep test_hs
 $ docker logs -f --tail 10 matrix_public_archive_test_hs1_1

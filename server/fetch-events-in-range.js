@@ -26,16 +26,6 @@ async function fetchEventsFromTimestampBackwards(accessToken, roomId, ts, limit)
   assert(ts);
   assert(limit);
 
-  // TODO: Only join world_readable rooms. Perhaps we want to serve public rooms
-  // where we have been invited. GET
-  // /_matrix/client/v3/directory/list/room/{roomId} (Gets the visibility of a
-  // given room on the server’s public room directory.)
-  const joinEndpoint = urlJoin(matrixServerUrl, `_matrix/client/r0/join/${roomId}`);
-  await fetchEndpointAsJson(joinEndpoint, {
-    method: 'POST',
-    accessToken,
-  });
-
   const timestampToEventEndpoint = urlJoin(
     matrixServerUrl,
     `_matrix/client/unstable/org.matrix.msc3030/rooms/${roomId}/timestamp_to_event?ts=${ts}&dir=b`
