@@ -114,6 +114,7 @@ describe('matrix-public-archive', () => {
     let numMessagesSent = 0;
     afterEach(() => {
       if (interactive) {
+        // eslint-disable-next-line no-console
         console.log('Interactive URL for test', archiveUrl);
       }
 
@@ -301,6 +302,36 @@ describe('matrix-public-archive', () => {
         },
       });
 
+      // Test to make sure we can render the page when the reply is missing the
+      // event it's replying to (the relation).
+      const replyMissingRelationMessageText = `While the giant-impact theory explains many lines of evidence, some questions are still unresolved, most of which involve the Moon's composition.`;
+      const missingRelationEventId = '$someMissingEvent';
+      const replyMissingRelationMessageEventId = await sendMessageOnArchiveDate({
+        client,
+        roomId,
+        content: {
+          'org.matrix.msc1767.message': [
+            {
+              body: '> <@ericgittertester:my.synapse.server> some missing message',
+              mimetype: 'text/plain',
+            },
+            {
+              body: `<mx-reply><blockquote><a href="https://matrix.to/#/${roomId}/${missingRelationEventId}?via=my.synapse.server">In reply to</a> <a href="https://matrix.to/#/@ericgittertester:my.synapse.server">@ericgittertester:my.synapse.server</a><br>some missing message</blockquote></mx-reply>${replyMissingRelationMessageText}`,
+              mimetype: 'text/html',
+            },
+          ],
+          body: `> <@ericgittertester:my.synapse.server> some missing message\n\n${replyMissingRelationMessageText}`,
+          msgtype: 'm.text',
+          format: 'org.matrix.custom.html',
+          formatted_body: `<mx-reply><blockquote><a href="https://matrix.to/#/${roomId}/${missingRelationEventId}?via=my.synapse.server">In reply to</a> <a href="https://matrix.to/#/@ericgittertester:my.synapse.server">@ericgittertester:my.synapse.server</a><br>some missing message</blockquote></mx-reply>${replyMissingRelationMessageText}`,
+          'm.relates_to': {
+            'm.in_reply_to': {
+              event_id: missingRelationEventId,
+            },
+          },
+        },
+      });
+
       // Test reactions
       const reactionText = '😅';
       await sendEventOnArchiveDate({
@@ -368,6 +399,17 @@ describe('matrix-public-archive', () => {
         replyMessageElement.outerHTML,
         new RegExp(`.*${escapeStringRegexp(normalMessageEventId2)}.*`)
       );
+
+      const replyMissingRelationMessageElement = dom.document.querySelector(
+        `[data-event-id="${replyMissingRelationMessageEventId}"]`
+      );
+      // Make sure the reply text is there.
+      // We don't care about the message we're replying to because it's missing on purpose.
+      assert.match(
+        replyMissingRelationMessageElement.outerHTML,
+        new RegExp(`.*${escapeStringRegexp(replyMissingRelationMessageText)}.*`)
+      );
+
       // Make sure the reaction also exists
       assert.match(
         replyMessageElement.outerHTML,

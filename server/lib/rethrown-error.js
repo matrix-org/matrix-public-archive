@@ -40,7 +40,7 @@ class RethrownError extends ExtendedError {
     const messageLines = (this.message.match(/\n/g) || []).length + 1;
 
     const indentedOriginalError = error.stack
-      .split('\n')
+      .split(/\r?\n/)
       .map((line) => `    ${line}`)
       .join('\n');
 

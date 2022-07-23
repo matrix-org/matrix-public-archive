@@ -9,6 +9,8 @@ const assert = require('matrix-public-archive-shared/lib/assert');
 const {
   Platform,
   MediaRepository,
+  HomeServerApi,
+  StorageFactory,
   createNavigation,
   createRouter,
 
@@ -147,12 +149,46 @@ async function mountHydrogen() {
   // page don't say `undefined`.
   urlRouter.attach();
 
+  const storageFactory = new StorageFactory(
+    null,
+    window.indexedDB,
+    window.FDBKeyRange,
+    window.localStorage
+  );
+  const storage = await new Promise((resolve) => {
+    platform.logger.run('creating-storage', async (log) => {
+      const storage = await storageFactory.create('1', log);
+      resolve(storage);
+    });
+  });
+
+  const hsApi = new HomeServerApi({
+    request: (/*url, options*/) => {
+      return {
+        abort() {},
+        async response() {
+          // Respond to the `/context` requests about missing event relations
+          // with empty content. We don't want more errors to be logged but
+          // we're ok with the missing events staying missing.
+          return {
+            // 204: No content
+            status: 204,
+            body: {},
+          };
+        },
+      };
+    },
+    homeserver: 'fakehomeserver',
+  });
+
   // We use the timeline to setup the relations between entries
   const timeline = new Timeline({
     roomId: roomData.id,
     fragmentIdComparer: fragmentIdComparer,
     clock: platform.clock,
     logger: platform.logger,
+    storage,
+    hsApi,
   });
 
   const mediaRepository = new MediaRepository({
