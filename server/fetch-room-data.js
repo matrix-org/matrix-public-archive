@@ -4,6 +4,7 @@ const assert = require('assert');
 
 const urlJoin = require('url-join');
 const { fetchEndpointAsJson } = require('./lib/fetch-endpoint');
+const { traceFunction } = require('./tracing/trace-utilities');
 
 const config = require('./lib/config');
 const matrixServerUrl = config.get('matrixServerUrl');
@@ -48,4 +49,4 @@ async function fetchRoomData(accessToken, roomId) {
   };
 }
 
-module.exports = fetchRoomData;
+module.exports = traceFunction(fetchRoomData);

@@ -8,6 +8,7 @@ const fork = require('child_process').fork;
 
 const assert = require('assert');
 const RethrownError = require('../lib/rethrown-error');
+const { traceFunction } = require('../tracing/trace-utilities');
 
 // The render should be fast. If it's taking more than 5 seconds, something has
 // gone really wrong.
@@ -105,4 +106,4 @@ async function renderHydrogenToString(options) {
   }
 }
 
-module.exports = renderHydrogenToString;
+module.exports = traceFunction(renderHydrogenToString);
